@@ -23,6 +23,6 @@ Using an Internet connected ESP-32 and some other electronics, we can record a v
 ### **Team**
 - **Rahul Myana** : [Github](https://github.com/Ramenisneat) - [rahulmyana42@gmail.com](mailto:rahulmyana42@gmail.com)
 
-### LOGS
+### Logs
 
-I will update on my progress and working on this [logs](./docs/logs.md) site. 
+I will update on my progress and working on this [logs](https://makerspace-fri-utaustin.github.io/GPT-8ball/docs/logs.html) site. 

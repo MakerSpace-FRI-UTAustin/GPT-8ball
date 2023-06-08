@@ -6,3 +6,6 @@
 - Connect the ESP-32 to a personal hotspot and use it to test HTTP Post requests
 - Audio are too low quality. May need to get a new mic.
 - Should work on making a structured code base.
+
+![](../media/June8.png)
+![](../media/June8.MOV)

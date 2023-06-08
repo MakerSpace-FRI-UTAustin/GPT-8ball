@@ -22,3 +22,5 @@ Using an Internet connected ESP-32 and some other electronics, we can record a v
 
 ### **Team**
 - **Rahul Myana** : [Github](https://github.com/Ramenisneat) - [rahulmyana42@gmail.com](mailto:rahulmyana42@gmail.com)
+
+### [LOGS] (./docs/logs.md)

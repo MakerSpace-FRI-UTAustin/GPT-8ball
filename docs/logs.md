@@ -1,4 +1,4 @@
-# Logs
+#### **Logs**
 
 ## Thursday - 06/08/23
 - Officially created a github repo for this project.

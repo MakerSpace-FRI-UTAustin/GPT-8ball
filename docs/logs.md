@@ -1,6 +1,6 @@
-#### **Logs**
+## **Logs**
 
-## Thursday - 06/08/23
+### Thursday - 06/08/23
 - Officially created a github repo for this project.
 - Finalized recording audio clips to internal SPI RAM FS.
 - Connect the ESP-32 to a personal hotspot and use it to test HTTP Post requests

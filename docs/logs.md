@@ -8,4 +8,4 @@
 - Should work on making a structured code base.
 
 ![](../media/June8.png)
-![](../media/June8.MOV)
+![](../media/June8.mov)

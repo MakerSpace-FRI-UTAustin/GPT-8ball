@@ -7,5 +7,5 @@
 - Audio are too low quality. May need to get a new mic.
 - Should work on making a structured code base.
 
-https://github.com/MakerSpace-FRI-UTAustin/GPT-8ball/assets/55544605/a26528c3-20f4-483e-9b17-cfa84072ff38
+![video](https://github.com/MakerSpace-FRI-UTAustin/GPT-8ball/assets/55544605/a26528c3-20f4-483e-9b17-cfa84072ff38)
 

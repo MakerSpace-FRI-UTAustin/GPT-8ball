@@ -9,3 +9,10 @@
 
 ![video](https://github.com/MakerSpace-FRI-UTAustin/GPT-8ball/assets/55544605/a26528c3-20f4-483e-9b17-cfa84072ff38)
 
+
+### Wednesday - 06/14/23
+- Audio is really noisy.
+- Using a publically hosted audio file, I tried "recording" the audio to memory.
+- Turns out the transmission is still garbled. 
+- I'm pretty sure, it's because i'm writing it to flash memory simultaneously.
+- Will try other methods and may have to resort to a SD card. 

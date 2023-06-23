@@ -1,103 +1,125 @@
 #include "Arduino.h"
 #include "AudioTools.h"
+#include "LittleFS.h"
 #include "FS.h"
-#include "SPIFFS.h"
+#include "SD.h"
+#include "SPI.h"
 #include "WiFi.h"
 #include "HTTPClient.h"
+#include "secrets.h"
 
 AnalogAudioStream adc;
-// const int32_t max_buffer_len = 1024;
-// uint8_t buffer[max_buffer_len];
-ConverterScaler<int16_t> scaler(1.0, -26427, 32700 );
-int sampleRate = 44100;
+ConverterScaler<int16_t> scaler(1.0, -26427, 32700);
+
+//Audio Information. May vary.
+int sampleRate = 43000;
 int channels = 1;
 int samplingBits = 16;
-int recordTime = 10;
-int readSize = 2048;
-int flashSize = sampleRate * channels * samplingBits / 8 * recordTime;
-
-const char* ssid = "Rahul’s iPhone"; 
-const char* password = "12345678";
-
+int duration = 5;
+int fileSize = (samplingBits * sampleRate * channels * duration) / 8;
+int blockSize = 1024;
 AudioInfo info(sampleRate, channels, samplingBits);
-const char *filename = "/speech.wav";                                                                        
-File audioFile;                                                 
-EncodedAudioStream out(&audioFile, new WAVEncoder());             
+
+File audioFile;
+const char *filename = "/speech.wav";
+
+//TODO: Change to a method where a variable can store the current Filesystem
+bool SDMODE = false;
+
+EncodedAudioStream out(&audioFile, new WAVEncoder());
 StreamCopy copier(out, adc);
 
-void recordSetup(){
-  SPIFFS.remove(filename);
-  audioFile = SPIFFS.open(filename, FILE_WRITE);
-  if(!audioFile){
-   Serial.println("There was an error opening the file for writing");
-   return;
-  }
-  audioFile.seek(0);
-
-  //Maybe need to pass in a conf?
-  auto cfg = out.defaultConfig();
-  cfg.copyFrom(info);
-  out.begin(cfg);
-  
-}
 void setup(void) {
   Serial.begin(115200);
 
-  wifiSetup();  
   Serial.println("starting I2S-ADC...");
   auto cfg = adc.defaultConfig(RX_MODE);
   cfg.copyFrom(info);
-  // Serial.println("Buffer size: "+ (int) cfg.buffer_size);
   adc.begin(cfg);
-
-  if(!SPIFFS.begin(true)){
-    Serial.println("SPIFFS Mount Failed");
-    return;
+  
+  if (SDMODE){
+    if (!SD.begin(true)) {
+      Serial.println("SD Mount Failed");
+      return;
+    }
   }
-
+  else{
+    if (!LittleFS.begin(true)) {      
+      Serial.println("LittleFS Mount Failed");
+      return;
+    }
+    
+  }
   recordClip();
-
+  wifiSetup();
   sendAudio();
-
 }
 
-void recordClip(){
+
+void recordSetup() {
+  if (SDMODE){
+    SD.remove(filename);
+    audioFile = SD.open(filename, FILE_WRITE);
+  }
+  else{
+    LittleFS.remove(filename);
+    audioFile = LittleFS.open(filename, FILE_WRITE);    
+  }
+
+  if (!audioFile) {
+    Serial.println("There was an error opening the file for writing");
+    return;
+  }
+  audioFile.seek(0);
+  auto cfg = out.defaultConfig();
+  cfg.copyFrom(info);
+  out.begin(cfg);
+}
+
+void recordClip() {
   recordSetup();
   Serial.println("starting record");
-  
+
   unsigned long start = millis();
-  //Prolly need to scale adc audio
-  while (millis() - start < recordTime * 1000){
+  for (int i = 0; i <= fileSize; i += blockSize) {
     copier.copy(scaler);
   }
-  Serial.println(millis() - start);
-  // Serial.println("length: "+ (millis() - start));
+
+  Serial.print("time taken: ");
+  Serial.print((millis() - start)/1000);
+  Serial.println("s");
 
   audioFile.close();
 }
 
 
-//Testing
-void sendAudio(){
+void sendAudio() {
   HTTPClient http;
-  http.begin("https://webhook.site/1be50442-9523-4105-9867-c3cefa86a9f3");
-  http.addHeader("Content-Type", "audio/wav");
-  audioFile = SPIFFS.open(filename, FILE_READ);
-  int httpCode = http.sendRequest("POST", &audioFile, audioFile.size());
+  http.begin(URL);
+  http.addHeader("Content-Type", "audio/x-wav");
+  if (SDMODE){
+    audioFile = SD.open(filename, FILE_READ);
+  }
+  else{
+    audioFile = LittleFS.open(filename, FILE_READ);
+  }
+
+  int fileLen = audioFile.size();
+  int httpCode = http.sendRequest("POST", &audioFile, fileLen);
   Serial.println(httpCode);
+  http.end();
 }
 
 
 //Make into an AP to make configurations on
-void wifiSetup(){
-  WiFi.begin(ssid, password);
+void wifiSetup() {
+  WiFi.begin(SSID, PASS);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.println("Connecting to WiFi..");
   }
-  Serial.println(WiFi.localIP());   
+  Serial.println(WiFi.localIP());
 }
 
 void loop() {
-    
-}   
+}

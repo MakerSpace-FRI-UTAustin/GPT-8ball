@@ -25,3 +25,8 @@
 - Testing out with ChatGPT, it seems like the ai is more than powerful enough to interpolate the missing gaps in the audio and it is working well.
 - After some more testing with small audio clips, if the speaking is more or less clear and well spoken, the AI can adequately transcribe it. For the purposes of this project it is fine, but I do want to note the poor quality in the audio.
 
+### Friday - 06/23/23
+- Scrapped the HTTPClient library as there is no clear way to send the data in multi form manner.
+- Oppurtunity to learn and understand how HTTP requests are formatted. The whole request is written line by line.
+- Using the Root CA cert of the api, we can establish a secure transmission
+- Successful response is given. We can parse out this text and use it for the final Chat request

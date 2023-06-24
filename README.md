@@ -13,7 +13,7 @@ Using an Internet connected ESP-32 and some other electronics, we can record a v
 - [ ] Get all parts
 - [X] Able to record audio
 - [X] Connect to the Internet and send HTTP requests
-- [ ] Make requests with OpenAI's API
+- [X] Make requests with OpenAI's API
 - [ ] Use a shake sensor to trigger audio recording.
 - [ ] Display info onto a screen.
 - [ ] Able to customize the configuration of the environmental variables using WAP portal. (WiFi SSID, API keys)

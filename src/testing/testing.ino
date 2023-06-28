@@ -1,11 +1,10 @@
-#include "Arduino.h"
-#include "AudioTools.h"
-#include "LittleFS.h"
-#include "FS.h"
-#include "SD.h"
-#include "SPI.h"
-#include "WiFiClientSecure.h"
+#include <Arduino.h>
+#include <AudioTools.h>
+#include <LittleFS.h>
+#include <FS.h>
+#include <WiFiClientSecure.h>
 #include "secrets.h"
+#include <ArduinoJson.h>
 
 AnalogAudioStream adc;
 ConverterScaler<int16_t> scaler(1.0, -26427, 32700);
@@ -20,7 +19,7 @@ int blockSize = 1024;
 AudioInfo info(sampleRate, channels, samplingBits);
 
 File audioFile;
-const char *filename = "/speech.wav";
+const char* filename = "/speech.wav";
 
 //TODO: Change to a method where a variable can store the current Filesystem
 bool SDMODE = false;
@@ -28,70 +27,68 @@ bool SDMODE = false;
 EncodedAudioStream out(&audioFile, new WAVEncoder());
 StreamCopy copier(out, adc);
 
-char *cert = \
-  "-----BEGIN CERTIFICATE-----\n" \
-  "MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqhkiG9w0BAQUFADBaMQswCQYDVQQGEwJJ\n" \
-  "RTESMBAGA1UEChMJQmFsdGltb3JlMRMwEQYDVQQLEwpDeWJlclRydXN0MSIwIAYD\n" \
-  "VQQDExlCYWx0aW1vcmUgQ3liZXJUcnVzdCBSb290MB4XDTAwMDUxMjE4NDYwMFoX\n" \
-  "DTI1MDUxMjIzNTkwMFowWjELMAkGA1UEBhMCSUUxEjAQBgNVBAoTCUJhbHRpbW9y\n" \
-  "ZTETMBEGA1UECxMKQ3liZXJUcnVzdDEiMCAGA1UEAxMZQmFsdGltb3JlIEN5YmVy\n" \
-  "VHJ1c3QgUm9vdDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAKMEuyKr\n" \
-  "mD1X6CZymrV51Cni4eiVgLGw41uOKymaZN+hXe2wCQVt2yguzmKiYv60iNoS6zjr\n" \
-  "IZ3AQSsBUnuId9Mcj8e6uYi1agnnc+gRQKfRzMpijS3ljwumUNKoUMMo6vWrJYeK\n" \
-  "mpYcqWe4PwzV9/lSEy/CG9VwcPCPwBLKBsua4dnKM3p31vjsufFoREJIE9LAwqSu\n" \
-  "XmD+tqYF/LTdB1kC1FkYmGP1pWPgkAx9XbIGevOF6uvUA65ehD5f/xXtabz5OTZy\n" \
-  "dc93Uk3zyZAsuT3lySNTPx8kmCFcB5kpvcY67Oduhjprl3RjM71oGDHweI12v/ye\n" \
-  "jl0qhqdNkNwnGjkCAwEAAaNFMEMwHQYDVR0OBBYEFOWdWTCCR1jMrPoIVDaGezq1\n" \
-  "BE3wMBIGA1UdEwEB/wQIMAYBAf8CAQMwDgYDVR0PAQH/BAQDAgEGMA0GCSqGSIb3\n" \
-  "DQEBBQUAA4IBAQCFDF2O5G9RaEIFoN27TyclhAO992T9Ldcw46QQF+vaKSm2eT92\n" \
-  "9hkTI7gQCvlYpNRhcL0EYWoSihfVCr3FvDB81ukMJY2GQE/szKN+OMY3EU/t3Wgx\n" \
-  "jkzSswF07r51XgdIGn9w/xZchMB5hbgF/X++ZRGjD8ACtPhSNzkE1akxehi/oCr0\n" \
-  "Epn3o0WC4zxe9Z2etciefC7IpJ5OCBRLbf1wbWsaY71k5h+3zvDyny67G7fyUIhz\n" \
-  "ksLi4xaNmjICq44Y3ekQEe5+NauQrz4wlHrQMz2nZQ/1/I6eYs9HRCwBXbsdtTLS\n" \
-  "R9I4LtD+gdwyah617jzV/OeBHRnDJELqYzmp\n" \
+char* cert =
+  "-----BEGIN CERTIFICATE-----\n"
+  "MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqhkiG9w0BAQUFADBaMQswCQYDVQQGEwJJ\n"
+  "RTESMBAGA1UEChMJQmFsdGltb3JlMRMwEQYDVQQLEwpDeWJlclRydXN0MSIwIAYD\n"
+  "VQQDExlCYWx0aW1vcmUgQ3liZXJUcnVzdCBSb290MB4XDTAwMDUxMjE4NDYwMFoX\n"
+  "DTI1MDUxMjIzNTkwMFowWjELMAkGA1UEBhMCSUUxEjAQBgNVBAoTCUJhbHRpbW9y\n"
+  "ZTETMBEGA1UECxMKQ3liZXJUcnVzdDEiMCAGA1UEAxMZQmFsdGltb3JlIEN5YmVy\n"
+  "VHJ1c3QgUm9vdDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAKMEuyKr\n"
+  "mD1X6CZymrV51Cni4eiVgLGw41uOKymaZN+hXe2wCQVt2yguzmKiYv60iNoS6zjr\n"
+  "IZ3AQSsBUnuId9Mcj8e6uYi1agnnc+gRQKfRzMpijS3ljwumUNKoUMMo6vWrJYeK\n"
+  "mpYcqWe4PwzV9/lSEy/CG9VwcPCPwBLKBsua4dnKM3p31vjsufFoREJIE9LAwqSu\n"
+  "XmD+tqYF/LTdB1kC1FkYmGP1pWPgkAx9XbIGevOF6uvUA65ehD5f/xXtabz5OTZy\n"
+  "dc93Uk3zyZAsuT3lySNTPx8kmCFcB5kpvcY67Oduhjprl3RjM71oGDHweI12v/ye\n"
+  "jl0qhqdNkNwnGjkCAwEAAaNFMEMwHQYDVR0OBBYEFOWdWTCCR1jMrPoIVDaGezq1\n"
+  "BE3wMBIGA1UdEwEB/wQIMAYBAf8CAQMwDgYDVR0PAQH/BAQDAgEGMA0GCSqGSIb3\n"
+  "DQEBBQUAA4IBAQCFDF2O5G9RaEIFoN27TyclhAO992T9Ldcw46QQF+vaKSm2eT92\n"
+  "9hkTI7gQCvlYpNRhcL0EYWoSihfVCr3FvDB81ukMJY2GQE/szKN+OMY3EU/t3Wgx\n"
+  "jkzSswF07r51XgdIGn9w/xZchMB5hbgF/X++ZRGjD8ACtPhSNzkE1akxehi/oCr0\n"
+  "Epn3o0WC4zxe9Z2etciefC7IpJ5OCBRLbf1wbWsaY71k5h+3zvDyny67G7fyUIhz\n"
+  "ksLi4xaNmjICq44Y3ekQEe5+NauQrz4wlHrQMz2nZQ/1/I6eYs9HRCwBXbsdtTLS\n"
+  "R9I4LtD+gdwyah617jzV/OeBHRnDJELqYzmp\n"
   "-----END CERTIFICATE-----\n";
+
 
 
 void setup(void) {
   Serial.begin(115200);
-
-  Serial.println("starting I2S-ADC...");
   auto cfg = adc.defaultConfig(RX_MODE);
   cfg.copyFrom(info);
   adc.begin(cfg);
-  
 
-  //TODO: Make FS be stored into global variable and then controlled
-  if (SDMODE){
-    if (!SD.begin(true)) {
-      Serial.println("SD Mount Failed");
-      return;
-    }
-  }
-  else{
-    if (!LittleFS.begin(true)) {      
-      Serial.println("LittleFS Mount Failed");
-      return;
-    }
-    
+  if (!LittleFS.begin(true)) {
+    Serial.println("LittleFS Mount Failed");
+    return;
   }
 
   recordClip();
   wifiSetup();
-  sendAudio();
+
+  char prompt[200];
+  char answer[500];
+
+  int start = millis();
+  sendAudio(prompt);
+  Serial.println(prompt);
+  if (strcmp(prompt, "InvalidInput") == 0) {
+    Serial.println("Couldn't transcribe audio");
+    stop();
+  }
+  Serial.printf("Time taken for audio %d s \n", (millis() - start) / 1000);
+
+  start = millis();
+  sendPrompt(prompt, answer);
+  Serial.println(answer);
+  Serial.printf("Time taken for response %d s \n", (millis() - start) / 1000);
 }
 
 
 void recordSetup() {
   //Initialize the file
-  if (SDMODE){
-    SD.remove(filename);
-    audioFile = SD.open(filename, FILE_WRITE);
-  }
-  else{
-    LittleFS.remove(filename);
-    audioFile = LittleFS.open(filename, FILE_WRITE);    
-  }
+  LittleFS.remove(filename);
+  audioFile = LittleFS.open(filename, FILE_WRITE);
 
   if (!audioFile) {
     Serial.println("There was an error opening the file for writing");
@@ -114,100 +111,177 @@ void recordClip() {
     copier.copy(scaler);
   }
 
-  Serial.println(String("time taken: ") + ((millis() - start)/1000) + String("s"));
+  Serial.print("time taken: ");
+  Serial.print((millis() - start) / 1000);
+  Serial.println("s");
 
   audioFile.close();
 }
 
 
-void sendAudio() {
-  if (SDMODE){
-    audioFile = SD.open(filename, FILE_READ);
-  }
-  else{
-    audioFile = LittleFS.open(filename, FILE_READ);
-  }
+void sendAudio(char* prompt) {
+  Serial.println("Sending audio");
+  audioFile = LittleFS.open(filename, FILE_READ);
   audioFile.seek(0);
 
   //information of the API to connect to
   int port = 443;
-  String host = "api.openai.com";
-  String endpoint = "/v1/audio/transcriptions";
+  char* host = "api.openai.com";
+  char* endpoint = "/v1/audio/transcriptions";
 
   //Allows for TLS handshake to occur
   WiFiClientSecure client;
   client.setCACert(cert);
-  client.connect(host.c_str(), port);
+  client.connect(host, port);
 
   //Some HTTP specific values
-  String boundary = "------------------------e08f77c03373314f";
-  String twohyphens = "--";
-  String newline = "\r\n";
+  char* boundary = "------------------------e08f77c03373314f";
+  char* twohyphens = "--";
+  char* newline = "\r\n";
 
   int newlineLength = 2;
-  int boundaryLength = twohyphens.length() + boundary.length() + newlineLength;
-  
+  int boundaryLength = strlen(twohyphens) + strlen(boundary) + newlineLength;
+
   //Fields of the multipart-form data
-  String fileDisposition = String("Content-Disposition: form-data; name=\"file\"; filename=\"") + filename + String("\"");
-  String fileType = "Content-Type: audio/x-wav";
-  String modelDisposition = "Content-Disposition: form-data; name=\"model\"";
-  String model = "whisper-1";
+  char fileDisposition[100];
+  sprintf(fileDisposition, "Content-Disposition: form-data; name=\"file\"; filename=\"%s\"", filename);
+  char* fileType = "Content-Type: audio/x-wav";
+  char* modelDisposition = "Content-Disposition: form-data; name=\"model\"";
+  char* model = "whisper-1";
 
-  int contentLength = boundaryLength + fileDisposition.length() + newlineLength + fileType.length() + newlineLength + newlineLength + audioFile.size() + newlineLength
-                      + boundaryLength + modelDisposition.length() + newlineLength + newlineLength + model.length() + boundaryLength + twohyphens.length() + newlineLength;
+  int contentLength = boundaryLength + strlen(fileDisposition) + newlineLength + strlen(fileType) + newlineLength + newlineLength + audioFile.size() + newlineLength
+                      + boundaryLength + strlen(modelDisposition) + newlineLength + newlineLength + strlen(model) + boundaryLength + strlen(twohyphens) + newlineLength;
 
 
-  client.println("POST "+ endpoint +" HTTP/1.1");
-  client.println("Host: "+ host);
+  client.print("POST ");
+  client.print(endpoint);
+  client.println(" HTTP/1.1");
+  client.print("Host: ");
+  client.println(host);
   client.println("User-Agent: ESP32");
   client.println("Accept: */*");
-  client.println("Authorization: Bearer " + String(APIKEY));
-  client.println("Content-Length: " + String(contentLength));
-  client.println("Content-Type: multipart/form-data; boundary=" + String(boundary));
-  client.println();  
+  client.print("Authorization: Bearer ");
+  client.println(APIKEY);
+  client.print("Content-Length: ");
+  client.println(contentLength);
+  client.print("Content-Type: multipart/form-data; boundary=");
+  client.println(boundary);
+  client.println();
 
   //Writing body of request
-  client.println(twohyphens + boundary);
+  client.print(twohyphens);
+  client.println(boundary);
   client.println(fileDisposition);
   client.println(fileType);
   client.println();
-  
-  uint8_t buffer[1024];
-  while (audioFile.available()){
-    size_t readBytes = audioFile.readBytes((char*)buffer, 1024);    
+  uint8_t buffer[1600];
+  while (audioFile.available()) {
+    size_t readBytes = audioFile.readBytes((char*)buffer, 1600);
     client.write(buffer, readBytes);
   }
   client.flush();
   audioFile.close();
   client.println();
-  client.println(twohyphens + boundary);
+  client.print(twohyphens);
+  client.println(boundary);
   client.println(modelDisposition);
   client.println();
   client.println(model);
-  client.println(twohyphens + boundary + twohyphens);  
+  client.print(twohyphens);
+  client.print(boundary);
+  client.println(twohyphens);
   client.println();
 
   //Parse response from server
-  Serial.println("============");
   while (client.connected()) {
     String line = client.readStringUntil('\n');
     if (line == "\r") {
-      Serial.println("headers received");
       break;
     }
   }
-  String response = "";
-  while (client.available()) { 
-    response += (char) client.read();
+  char response[100];
+  response[0] = '\0';
+  while (client.available()) {
+    char c = (char)client.read();
+    strncat(response, &c, 1);
+  }
+  client.stop();
+
+  StaticJsonDocument<16> doc;
+  DeserializationError error = deserializeJson(doc, response, 100);
+
+  if (error) {
+    Serial.print("deserialize error");
+    strncpy(prompt, error.c_str(), strlen(error.c_str()) + 1);
+    return;
   }
 
-  Serial.println(response);
-
-  client.stop();
-  
-
+  const char* text = doc["text"];
+  strncpy(prompt, text, strlen(text) + 1);
 }
 
+void sendPrompt(char* prompt, char* answer) {
+  Serial.println("Sending prompt");
+  //information of the API to connect to
+  int port = 443;
+  char* host = "api.openai.com";
+  char* endpoint = "/v1/chat/completions";
+
+  //Allows for TLS handshake to occur
+  WiFiClientSecure client;
+  client.setCACert(cert);
+  client.connect(host, port);
+
+  char* payload1 = "{\"model\": \"gpt-3.5-turbo\", \"messages\": [{\"role\": \"system\", \"content\": \"You are an AI powered Magic 8 Ball, your answers should resemble a typical 8 Ball's response but can be adapted to fit the needs of the prompt.\"}, {\"role\": \"user\", \"content\": \"";
+  char* payload2 = "\"}]}";
+  int payloadLength = strlen(payload1) + strlen(payload2) + strlen(prompt);
+
+  client.print("POST ");
+  client.print(endpoint);
+  client.println(" HTTP/1.1");
+  client.print("Host: ");
+  client.println(host);
+  client.println("User-Agent: ESP32");
+  client.println("Accept: */*");
+  client.print("Authorization: Bearer ");
+  client.println(APIKEY);
+  client.print("Content-Length: ");
+  client.println(payloadLength);
+  client.println("Content-Type: application/json");
+  client.println();
+
+  client.print(payload1);
+  client.print(prompt);
+  client.println(payload2);
+  client.println();
+
+  while (client.connected()) {
+    String line = client.readStringUntil('\n');
+    if (line == "\r") {
+      // Serial.println("headers received");
+      break;
+    }
+  }
+  char response[1000];
+  response[0] = '\0';
+  while (client.available()) {
+    char c = (char)client.read();
+    strncat(response, &c, 1);
+  }
+  client.stop();
+
+  StaticJsonDocument<512> doc;
+  DeserializationError error = deserializeJson(doc, response);
+  if (error) {
+    Serial.print("deserialize error");
+    strncpy(answer, error.c_str(), strlen(error.c_str()) + 1);
+  }
+
+  JsonObject choices = doc["choices"][0];
+  const char* message = choices["message"]["content"];
+
+  strncpy(answer, message, strlen(message) + 1);
+}
 
 //Make into an AP to make configurations on
 void wifiSetup() {

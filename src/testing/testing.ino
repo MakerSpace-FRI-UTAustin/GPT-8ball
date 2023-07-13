@@ -50,41 +50,53 @@ char* cert =
   "R9I4LtD+gdwyah617jzV/OeBHRnDJELqYzmp\n"
   "-----END CERTIFICATE-----\n";
 
+unsigned char shakenFlag = 0;
+unsigned long timepoint = 0;
 
+//Callback for Gravity: Shake Sensor
+void IRAM_ATTR isr(){
+  if (millis() - timepoint > 50U && shakenFlag == 0){
+    shakenFlag = 1;   
+
+  }
+}
 
 void setup(void) {
   Serial.begin(115200);
+  
+  //Mic setup
   auto cfg = adc.defaultConfig(RX_MODE);
   cfg.copyFrom(info);
   adc.begin(cfg);
 
+  //FS setup; Can be substituted for SD card if needed
   if (!LittleFS.begin(true)) {
     Serial.println("LittleFS Mount Failed");
     return;
   }
 
-  recordClip();
+  //Interrupt handling for the shake sensor
+  pinMode(4, INPUT_PULLUP);
+  attachInterrupt(4, isr, FALLING);
+  timepoint = millis();
+
   wifiSetup();
 
-  char prompt[200];
-  char answer[500];
 
-  int start = millis();
-  sendAudio(prompt);
-  Serial.println(prompt);
-  if (strcmp(prompt, "InvalidInput") == 0) {
-    Serial.println("Couldn't transcribe audio");
-    stop();
-  }
-  Serial.printf("Time taken for audio %d s \n", (millis() - start) / 1000);
-
-  start = millis();
-  sendPrompt(prompt, answer);
-  Serial.println(answer);
-  Serial.printf("Time taken for response %d s \n", (millis() - start) / 1000);
+  
 }
 
+//Sanity check for API responses
+bool checkChars(char* str){
+  for (int i = 0; i < strlen(str); i++){
+    if (!isAscii(str[i])){
+      return false;      
+    }
+  }
+  return true;
+}
 
+//Setup file and encoder
 void recordSetup() {
   //Initialize the file
   LittleFS.remove(filename);
@@ -111,14 +123,14 @@ void recordClip() {
     copier.copy(scaler);
   }
 
-  Serial.print("time taken: ");
-  Serial.print((millis() - start) / 1000);
-  Serial.println("s");
+  Serial.printf("time taken: %d seconds\n", (millis() - start) / 1000);
 
   audioFile.close();
 }
 
 
+//Audio file -> text transcribtion
+// Sadly manually printing the raw HTTP request to server
 void sendAudio(char* prompt) {
   Serial.println("Sending audio");
   audioFile = LittleFS.open(filename, FILE_READ);
@@ -152,7 +164,6 @@ void sendAudio(char* prompt) {
   int contentLength = boundaryLength + strlen(fileDisposition) + newlineLength + strlen(fileType) + newlineLength + newlineLength + audioFile.size() + newlineLength
                       + boundaryLength + strlen(modelDisposition) + newlineLength + newlineLength + strlen(model) + boundaryLength + strlen(twohyphens) + newlineLength;
 
-
   client.print("POST ");
   client.print(endpoint);
   client.println(" HTTP/1.1");
@@ -174,6 +185,9 @@ void sendAudio(char* prompt) {
   client.println(fileDisposition);
   client.println(fileType);
   client.println();
+
+  int start = millis();
+  
   uint8_t buffer[1600];
   while (audioFile.available()) {
     size_t readBytes = audioFile.readBytes((char*)buffer, 1600);
@@ -181,6 +195,9 @@ void sendAudio(char* prompt) {
   }
   client.flush();
   audioFile.close();
+  Serial.printf("raw sending audio bytes: %d s \n", (millis() - start)/1000);
+  
+
   client.println();
   client.print(twohyphens);
   client.println(boundary);
@@ -211,7 +228,7 @@ void sendAudio(char* prompt) {
   DeserializationError error = deserializeJson(doc, response, 100);
 
   if (error) {
-    Serial.print("deserialize error");
+    Serial.println("deserialize error");
     strncpy(prompt, error.c_str(), strlen(error.c_str()) + 1);
     return;
   }
@@ -222,6 +239,7 @@ void sendAudio(char* prompt) {
 
 void sendPrompt(char* prompt, char* answer) {
   Serial.println("Sending prompt");
+    
   //information of the API to connect to
   int port = 443;
   char* host = "api.openai.com";
@@ -232,7 +250,7 @@ void sendPrompt(char* prompt, char* answer) {
   client.setCACert(cert);
   client.connect(host, port);
 
-  char* payload1 = "{\"model\": \"gpt-3.5-turbo\", \"messages\": [{\"role\": \"system\", \"content\": \"You are an AI powered Magic 8 Ball, your answers should resemble a typical 8 Ball's response but can be adapted to fit the needs of the prompt.\"}, {\"role\": \"user\", \"content\": \"";
+  char* payload1 = "{\"model\": \"gpt-3.5-turbo\", \"max_tokens\": 45, \"messages\": [{\"role\": \"system\", \"content\": \"You are an AI powered Magic 8 Ball, your answers should resemble a typical 8 Ball's response but can be adapted to fit the needs of the prompt.\"}, {\"role\": \"user\", \"content\": \"";
   char* payload2 = "\"}]}";
   int payloadLength = strlen(payload1) + strlen(payload2) + strlen(prompt);
 
@@ -262,7 +280,7 @@ void sendPrompt(char* prompt, char* answer) {
       break;
     }
   }
-  char response[1000];
+  char response[800];
   response[0] = '\0';
   while (client.available()) {
     char c = (char)client.read();
@@ -273,7 +291,7 @@ void sendPrompt(char* prompt, char* answer) {
   StaticJsonDocument<512> doc;
   DeserializationError error = deserializeJson(doc, response);
   if (error) {
-    Serial.print("deserialize error");
+    Serial.println("deserialize error");
     strncpy(answer, error.c_str(), strlen(error.c_str()) + 1);
   }
 
@@ -294,4 +312,27 @@ void wifiSetup() {
 }
 
 void loop() {
+  if (shakenFlag){
+    recordClip();
+
+    char prompt[200];
+    char answer[300];
+
+    int start = millis();
+    sendAudio(prompt);
+    Serial.println(prompt);
+    if (strcmp(prompt, "InvalidInput") == 0 || strlen(prompt) == 0 || !checkChars(prompt)) {
+      Serial.println("Couldn't transcribe audio");
+      stop();
+    }
+    Serial.printf("Time taken for audio %d s \n", (millis() - start) / 1000);
+
+    start = millis();
+    sendPrompt(prompt, answer);
+    Serial.println(answer);
+    Serial.printf("Time taken for response %d s \n", (millis() - start) / 1000);
+    
+    shakenFlag = 0;
+    
+  }
 }

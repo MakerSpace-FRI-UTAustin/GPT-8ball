@@ -37,3 +37,11 @@
 - There were problems with memory because Arduino `String` were being used.
 - After switching to C based strings,Iencountered Stack and buffer based overflows.
 - Switching all C string functions such as `strcpy` to their counterpart `strncpy` fixed the errors.
+
+### Thursday - 07/13/23
+- Ordered a Shake Sensor.
+- Using an interrupt handler the sensor is able to switch on the procedure.
+- Moved the main code to loop() so it can be continously ran.
+- The main functionality of the code is functioning properly and stress testing reveals no discernable major errors.
+- I find that the mic is not as reliable as I like it to be. To be clear, it is recording poorer quality, sped up audio, but to overcome that you would need to speak pretty loud but not too close to the mic. The best fix (and frankly what should be done) is adding an SD card for the audio to be saved on but I don't want to add more chaos to the less number of headers the ESP-32 has.
+- After many failed 3D prints, the 8ball enclosure is now complete. It is a modified version of open8ball.com's Arduino Uno version. I will attribute them later in the repo docs soon.

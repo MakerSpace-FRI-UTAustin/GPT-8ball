@@ -14,15 +14,20 @@ Using an Internet connected ESP-32 and some other electronics, we can record a v
 - [X] Able to record audio
 - [X] Connect to the Internet and send HTTP requests
 - [X] Make requests with OpenAI's API
-- [ ] Use a shake sensor to trigger audio recording.
+- [X] Use a shake sensor to trigger audio recording.
 - [ ] Display info onto a screen.
 - [ ] Able to customize the configuration of the environmental variables using WAP portal. (WiFi SSID, API keys)
 - [ ] Add haptics.
-- [ ] Make 8-ball enclosure.
+- [X] Make 8-ball enclosure.
+- [ ] Make all necessary attributions.
+- [ ] Make a step by step guide with all parts.
 
 ### **Team**
 - **Rahul Myana** : [Github](https://github.com/Ramenisneat) - [rahulmyana42@gmail.com](mailto:rahulmyana42@gmail.com)
 
-### Logs
+### **Parts list**
+TODO
+
+### **Logs**
 
 I will update on my progress and working on this [logs](https://makerspace-fri-utaustin.github.io/GPT-8ball/docs/logs.html) site. 

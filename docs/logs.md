@@ -45,3 +45,11 @@
 - The main functionality of the code is functioning properly and stress testing reveals no discernable major errors.
 - I find that the mic is not as reliable as I like it to be. To be clear, it is recording poorer quality, sped up audio, but to overcome that you would need to speak pretty loud but not too close to the mic. The best fix (and frankly what should be done) is adding an SD card for the audio to be saved on but I don't want to add more chaos to the less number of headers the ESP-32 has.
 - After many failed 3D prints, the 8ball enclosure is now complete. It is a modified version of open8ball.com's Arduino Uno version. I will attribute them later in the repo docs soon.
+
+### Thursday = 07/21/23
+- Got an LCD screen
+- Display data and responses onto the LCD screen.
+- At this point a crude prototype held with tape and dreams is done.
+- The response is a little slow but that could be due to me using my phone's hotspot.
+- The shake sensor is too linear. As in that there is only one axis of activation and so shaking the 8ball like a normal 8 ball doesn't work. I gotta experiment with better positions that activates the sensor properly.
+- The code was getting long so I moved relevent code to relevent files and headers.

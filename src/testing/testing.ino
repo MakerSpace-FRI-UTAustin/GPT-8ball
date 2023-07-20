@@ -2,53 +2,13 @@
 #include <AudioTools.h>
 #include <LittleFS.h>
 #include <FS.h>
-#include <WiFiClientSecure.h>
 #include "secrets.h"
 #include <ArduinoJson.h>
-
-AnalogAudioStream adc;
-ConverterScaler<int16_t> scaler(1.0, -26427, 32700);
-
-//Audio Information. May vary.
-int sampleRate = 43000;
-int channels = 1;
-int samplingBits = 16;
-int duration = 5;
-int fileSize = (samplingBits * sampleRate * channels * duration) / 8;
-int blockSize = 1024;
-AudioInfo info(sampleRate, channels, samplingBits);
-
-File audioFile;
-const char* filename = "/speech.wav";
-
-//TODO: Change to a method where a variable can store the current Filesystem
-bool SDMODE = false;
-
-EncodedAudioStream out(&audioFile, new WAVEncoder());
-StreamCopy copier(out, adc);
-
-char* cert =
-  "-----BEGIN CERTIFICATE-----\n"
-  "MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqhkiG9w0BAQUFADBaMQswCQYDVQQGEwJJ\n"
-  "RTESMBAGA1UEChMJQmFsdGltb3JlMRMwEQYDVQQLEwpDeWJlclRydXN0MSIwIAYD\n"
-  "VQQDExlCYWx0aW1vcmUgQ3liZXJUcnVzdCBSb290MB4XDTAwMDUxMjE4NDYwMFoX\n"
-  "DTI1MDUxMjIzNTkwMFowWjELMAkGA1UEBhMCSUUxEjAQBgNVBAoTCUJhbHRpbW9y\n"
-  "ZTETMBEGA1UECxMKQ3liZXJUcnVzdDEiMCAGA1UEAxMZQmFsdGltb3JlIEN5YmVy\n"
-  "VHJ1c3QgUm9vdDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAKMEuyKr\n"
-  "mD1X6CZymrV51Cni4eiVgLGw41uOKymaZN+hXe2wCQVt2yguzmKiYv60iNoS6zjr\n"
-  "IZ3AQSsBUnuId9Mcj8e6uYi1agnnc+gRQKfRzMpijS3ljwumUNKoUMMo6vWrJYeK\n"
-  "mpYcqWe4PwzV9/lSEy/CG9VwcPCPwBLKBsua4dnKM3p31vjsufFoREJIE9LAwqSu\n"
-  "XmD+tqYF/LTdB1kC1FkYmGP1pWPgkAx9XbIGevOF6uvUA65ehD5f/xXtabz5OTZy\n"
-  "dc93Uk3zyZAsuT3lySNTPx8kmCFcB5kpvcY67Oduhjprl3RjM71oGDHweI12v/ye\n"
-  "jl0qhqdNkNwnGjkCAwEAAaNFMEMwHQYDVR0OBBYEFOWdWTCCR1jMrPoIVDaGezq1\n"
-  "BE3wMBIGA1UdEwEB/wQIMAYBAf8CAQMwDgYDVR0PAQH/BAQDAgEGMA0GCSqGSIb3\n"
-  "DQEBBQUAA4IBAQCFDF2O5G9RaEIFoN27TyclhAO992T9Ldcw46QQF+vaKSm2eT92\n"
-  "9hkTI7gQCvlYpNRhcL0EYWoSihfVCr3FvDB81ukMJY2GQE/szKN+OMY3EU/t3Wgx\n"
-  "jkzSswF07r51XgdIGn9w/xZchMB5hbgF/X++ZRGjD8ACtPhSNzkE1akxehi/oCr0\n"
-  "Epn3o0WC4zxe9Z2etciefC7IpJ5OCBRLbf1wbWsaY71k5h+3zvDyny67G7fyUIhz\n"
-  "ksLi4xaNmjICq44Y3ekQEe5+NauQrz4wlHrQMz2nZQ/1/I6eYs9HRCwBXbsdtTLS\n"
-  "R9I4LtD+gdwyah617jzV/OeBHRnDJELqYzmp\n"
-  "-----END CERTIFICATE-----\n";
+#include <LiquidCrystal_I2C.h>
+#include <WiFiClientSecure.h>
+#include "lcd.h"
+#include "wifi.h"
+#include "audio.h"
 
 unsigned char shakenFlag = 0;
 unsigned long timepoint = 0;
@@ -57,12 +17,16 @@ unsigned long timepoint = 0;
 void IRAM_ATTR isr(){
   if (millis() - timepoint > 50U && shakenFlag == 0){
     shakenFlag = 1;   
-
   }
 }
 
 void setup(void) {
   Serial.begin(115200);
+
+  // initialize LCD
+  lcd.init();
+  // turn on LCD backlight                      
+  lcd.backlight();
   
   //Mic setup
   auto cfg = adc.defaultConfig(RX_MODE);
@@ -82,8 +46,6 @@ void setup(void) {
 
   wifiSetup();
 
-
-  
 }
 
 //Sanity check for API responses
@@ -95,39 +57,6 @@ bool checkChars(char* str){
   }
   return true;
 }
-
-//Setup file and encoder
-void recordSetup() {
-  //Initialize the file
-  LittleFS.remove(filename);
-  audioFile = LittleFS.open(filename, FILE_WRITE);
-
-  if (!audioFile) {
-    Serial.println("There was an error opening the file for writing");
-    return;
-  }
-  //Prompts encoder to write metadata to file
-  audioFile.seek(0);
-  auto cfg = out.defaultConfig();
-  cfg.copyFrom(info);
-  out.begin(cfg);
-}
-
-void recordClip() {
-  recordSetup();
-  Serial.println("starting record");
-
-  unsigned long start = millis();
-  //Records a set duration of audio by determining total file size of audio
-  for (int i = 0; i <= fileSize; i += blockSize) {
-    copier.copy(scaler);
-  }
-
-  Serial.printf("time taken: %d seconds\n", (millis() - start) / 1000);
-
-  audioFile.close();
-}
-
 
 //Audio file -> text transcribtion
 // Sadly manually printing the raw HTTP request to server
@@ -196,7 +125,6 @@ void sendAudio(char* prompt) {
   client.flush();
   audioFile.close();
   Serial.printf("raw sending audio bytes: %d s \n", (millis() - start)/1000);
-  
 
   client.println();
   client.print(twohyphens);
@@ -250,7 +178,7 @@ void sendPrompt(char* prompt, char* answer) {
   client.setCACert(cert);
   client.connect(host, port);
 
-  char* payload1 = "{\"model\": \"gpt-3.5-turbo\", \"max_tokens\": 45, \"messages\": [{\"role\": \"system\", \"content\": \"You are an AI powered Magic 8 Ball, your answers should resemble a typical 8 Ball's response but can be adapted to fit the needs of the prompt.\"}, {\"role\": \"user\", \"content\": \"";
+  char* payload1 = "{\"model\": \"gpt-3.5-turbo\", \"max_tokens\": 100, \"messages\": [{\"role\": \"system\", \"content\": \"You are an AI powered Magic 8 Ball, your answers should resemble a typical 8 Ball's response but can be adapted to fit the needs of the prompt.\"}, {\"role\": \"user\", \"content\": \"";
   char* payload2 = "\"}]}";
   int payloadLength = strlen(payload1) + strlen(payload2) + strlen(prompt);
 
@@ -301,38 +229,50 @@ void sendPrompt(char* prompt, char* answer) {
   strncpy(answer, message, strlen(message) + 1);
 }
 
-//Make into an AP to make configurations on
-void wifiSetup() {
-  WiFi.begin(SSID, PASS);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting to WiFi..");
-  }
-  Serial.println(WiFi.localIP());
-}
 
 void loop() {
+  lcd.setCursor(0, 0);
+  lcd.print("Shake to ask"); 
   if (shakenFlag){
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Recording audio"); 
+    
     recordClip();
 
     char prompt[200];
-    char answer[300];
+    char answer[400];
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Transcribing"); 
 
     int start = millis();
     sendAudio(prompt);
     Serial.println(prompt);
     if (strcmp(prompt, "InvalidInput") == 0 || strlen(prompt) == 0 || !checkChars(prompt)) {
-      Serial.println("Couldn't transcribe audio");
-      stop();
+      lcd.print("transcribe error");
     }
     Serial.printf("Time taken for audio %d s \n", (millis() - start) / 1000);
 
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Generating");
+
     start = millis();
     sendPrompt(prompt, answer);
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    marquee(answer);
+    
     Serial.println(answer);
     Serial.printf("Time taken for response %d s \n", (millis() - start) / 1000);
     
     shakenFlag = 0;
+
+    lcd.clear();
     
   }
+  delay(500);
 }

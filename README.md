@@ -1,7 +1,6 @@
 
-![IMG_2039](https://github.com/MakerSpace-FRI-UTAustin/GPT-8ball/assets/55544605/8323e9d8-aadb-44e5-a9e4-b4952ea6d95e)
-
-# GPT-8ball
+# GPT-8bal![test](https://github.com/MakerSpace-FRI-UTAustin/GPT-8ball/assets/55544605/00010f96-f10d-4eba-befd-799fa1cdbf18)
+l
 
 This is the official repository of the GPT magic 8 ball project at UT Austin Maker Space FRI.
 

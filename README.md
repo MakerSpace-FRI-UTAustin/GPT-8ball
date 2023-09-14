@@ -17,7 +17,7 @@ Using an Internet connected ESP-32 and some other electronics, we can record a v
 - [X] Use a shake sensor to trigger audio recording.
 - [X] Display info onto a screen.
 - [ ] Able to customize the configuration of the environmental variables using WAP portal. (WiFi SSID, API keys)
-- [ ] Add haptics.
+- [X] Add haptics.
 - [X] Make 8-ball enclosure.
 - [ ] Make all necessary attributions.
 - [ ] Make a step by step guide with all parts.
@@ -26,7 +26,12 @@ Using an Internet connected ESP-32 and some other electronics, we can record a v
 - **Rahul Myana** : [Github](https://github.com/Ramenisneat) - [rahulmyana42@gmail.com](mailto:rahulmyana42@gmail.com)
 
 ### **Parts list**
-TODO
+- ESP 32 Dev kit board (atleast 4Mb of Flash memory)
+- MAX4466 electret microphone
+- DFRobot Gravity: Shake sensor
+- 16x2 lcd I2S display
+- 5v power source (battery cage with buck converter)
+- 3D printed enclosure (Thanks to https://Open8Ball.com.)
 
 ### **Logs**
 

@@ -1,5 +1,7 @@
 void marquee(char *answer)
 {
+  lcd.clear();
+  lcd.setCursor(0, 0);
   int length = strlen(answer);
 
   char text[length + 16] = "";
@@ -22,4 +24,12 @@ void marquee(char *answer)
     }
     
   }  
+}
+
+
+void clearWrite(char *text){
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(text);
+
 }

@@ -5,7 +5,7 @@ void recordSetup() {
   audioFile = LittleFS.open(filename, FILE_WRITE);
 
   if (!audioFile) {
-    Serial.println("There was an error opening the file for writing");
+    // Serial.println("There was an error opening the file for writing");
     return;
   }
   //Prompts encoder to write metadata to file
@@ -17,7 +17,7 @@ void recordSetup() {
 
 void recordClip() {
   recordSetup();
-  Serial.println("starting record");
+  // Serial.println("starting record");
 
   unsigned long start = millis();
   //Records a set duration of audio by determining total file size of audio
@@ -25,7 +25,7 @@ void recordClip() {
     copier.copy(scaler);
   }
 
-  Serial.printf("time taken: %d seconds\n", (millis() - start) / 1000);
+  // Serial.printf("time taken: %d seconds\n", (millis() - start) / 1000);
 
   audioFile.close();
 }

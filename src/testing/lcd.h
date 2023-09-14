@@ -4,3 +4,5 @@ int lcdRows = 2;
 LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);  
 
 void marquee(char *answer);
+
+void clearWrite(char *text);

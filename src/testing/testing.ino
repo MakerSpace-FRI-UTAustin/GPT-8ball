@@ -6,6 +6,7 @@
 #include <ArduinoJson.h>
 #include <LiquidCrystal_I2C.h>
 #include <WiFiClientSecure.h>
+#include <WiFiManager.h>
 #include "lcd.h"
 #include "wifi.h"
 #include "audio.h"
@@ -35,7 +36,7 @@ void setup(void) {
 
   //FS setup; Can be substituted for SD card if needed
   if (!LittleFS.begin(true)) {
-    Serial.println("LittleFS Mount Failed");
+    // Serial.println("LittleFS Mount Failed");
     return;
   }
 
@@ -61,7 +62,7 @@ bool checkChars(char* str){
 //Audio file -> text transcribtion
 // Sadly manually printing the raw HTTP request to server
 void sendAudio(char* prompt) {
-  Serial.println("Sending audio");
+  // Serial.println("Sending audio");
   audioFile = LittleFS.open(filename, FILE_READ);
   audioFile.seek(0);
 
@@ -124,7 +125,7 @@ void sendAudio(char* prompt) {
   }
   client.flush();
   audioFile.close();
-  Serial.printf("raw sending audio bytes: %d s \n", (millis() - start)/1000);
+  // Serial.printf("raw sending audio bytes: %d s \n", (millis() - start)/1000);
 
   client.println();
   client.print(twohyphens);
@@ -156,7 +157,7 @@ void sendAudio(char* prompt) {
   DeserializationError error = deserializeJson(doc, response, 100);
 
   if (error) {
-    Serial.println("deserialize error");
+    // Serial.println("deserialize error");
     strncpy(prompt, error.c_str(), strlen(error.c_str()) + 1);
     return;
   }
@@ -166,7 +167,7 @@ void sendAudio(char* prompt) {
 }
 
 void sendPrompt(char* prompt, char* answer) {
-  Serial.println("Sending prompt");
+  // Serial.println("Sending prompt");
     
   //information of the API to connect to
   int port = 443;
@@ -219,7 +220,7 @@ void sendPrompt(char* prompt, char* answer) {
   StaticJsonDocument<512> doc;
   DeserializationError error = deserializeJson(doc, response);
   if (error) {
-    Serial.println("deserialize error");
+    // Serial.println("deserialize error");
     strncpy(answer, error.c_str(), strlen(error.c_str()) + 1);
   }
 
@@ -231,47 +232,43 @@ void sendPrompt(char* prompt, char* answer) {
 
 
 void loop() {
-  lcd.setCursor(0, 0);
-  lcd.print("Shake to ask"); 
+
+  clearWrite("Shake to ask");
   if (shakenFlag){
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Recording audio"); 
+    clearWrite("Recording audio");
+
     
     recordClip();
 
     char prompt[200];
     char answer[400];
 
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Transcribing"); 
+    clearWrite("Transcribing");
+
 
     int start = millis();
     sendAudio(prompt);
-    Serial.println(prompt);
+    // Serial.println(prompt);
     if (strcmp(prompt, "InvalidInput") == 0 || strlen(prompt) == 0 || !checkChars(prompt)) {
-      lcd.print("transcribe error");
+      clearWrite("transcribe error");
+      
     }
-    Serial.printf("Time taken for audio %d s \n", (millis() - start) / 1000);
+    // Serial.printf("Time taken for audio %d s \n", (millis() - start) / 1000);
+    else{
+      clearWrite("Generating");
 
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Generating");
 
-    start = millis();
-    sendPrompt(prompt, answer);
+      start = millis();
+      sendPrompt(prompt, answer);
 
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    marquee(answer);
+      marquee(answer);
+    }
     
     Serial.println(answer);
-    Serial.printf("Time taken for response %d s \n", (millis() - start) / 1000);
+    // Serial.printf("Time taken for response %d s \n", (millis() - start) / 1000);
     
     shakenFlag = 0;
 
-    lcd.clear();
     
   }
   delay(500);

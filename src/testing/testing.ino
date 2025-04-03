@@ -1,51 +1,67 @@
 #include <Arduino.h>
 #include <AudioTools.h>
-#include <LittleFS.h>
+// #include <SPIFFS.h>
 #include <FS.h>
+#include <SD.h>
+
+// #include "esp_wifi.h"
+
 #include "secrets.h"
 #include <ArduinoJson.h>
 #include <LiquidCrystal_I2C.h>
 #include <WiFiClientSecure.h>
 #include <WiFiManager.h>
+
+// #include <esp_wpa2.h>
 #include "lcd.h"
 #include "wifi.h"
 #include "audio.h"
 
 unsigned char shakenFlag = 0;
 unsigned long timepoint = 0;
+const int sampleSize = 10;
 
-//Callback for Gravity: Shake Sensor
-void IRAM_ATTR isr(){
-  if (millis() - timepoint > 50U && shakenFlag == 0){
-    shakenFlag = 1;   
-  }
-}
+
+const int xInput = 33;
+const int yInput = 35;
+const int zInput = 32;
+
+// initialize minimum and maximum Raw Ranges for each axis
+int xRawMin = 512;
+int xRawMax = 4095;
+
+int yRawMin = 512;
+int yRawMax = 4095;
+
+int zRawMin = 512;
+int zRawMax = 4095;
+
+WiFiClientSecure client;
+
 
 void setup(void) {
   Serial.begin(115200);
 
+  Serial.println("Starting");
   // initialize LCD
   lcd.init();
   // turn on LCD backlight                      
   lcd.backlight();
   
   //Mic setup
-  auto cfg = adc.defaultConfig(RX_MODE);
-  cfg.copyFrom(info);
-  adc.begin(cfg);
-
+  
   //FS setup; Can be substituted for SD card if needed
-  if (!LittleFS.begin(true)) {
-    // Serial.println("LittleFS Mount Failed");
+  if(!SD.begin(5)){
+    Serial.println("SD Mount Failed");
     return;
-  }
+  
+}
 
-  //Interrupt handling for the shake sensor
-  pinMode(4, INPUT_PULLUP);
-  attachInterrupt(4, isr, FALLING);
-  timepoint = millis();
+  
+  Serial.println("Wifi Setup next");
 
   wifiSetup();
+  Serial.println("Setup Complete");
 
 }
 
@@ -63,7 +79,7 @@ bool checkChars(char* str){
 // Sadly manually printing the raw HTTP request to server
 void sendAudio(char* prompt) {
   // Serial.println("Sending audio");
-  audioFile = LittleFS.open(filename, FILE_READ);
+  audioFile = SD.open(filename, FILE_READ);
   audioFile.seek(0);
 
   //information of the API to connect to
@@ -72,9 +88,19 @@ void sendAudio(char* prompt) {
   char* endpoint = "/v1/audio/transcriptions";
 
   //Allows for TLS handshake to occur
-  WiFiClientSecure client;
+  
   client.setCACert(cert);
-  client.connect(host, port);
+  client.setInsecure();
+  Serial.println(client.connect(host, port));
+  // delay(1000);
+
+
+  if (!client.connected()){
+    Serial.println("Issues with establishing connection to API");
+    char* empty = "";
+    strncpy(prompt, empty, 1);
+    return;
+  }
 
   //Some HTTP specific values
   char* boundary = "------------------------e08f77c03373314f";
@@ -93,6 +119,7 @@ void sendAudio(char* prompt) {
 
   int contentLength = boundaryLength + strlen(fileDisposition) + newlineLength + strlen(fileType) + newlineLength + newlineLength + audioFile.size() + newlineLength
                       + boundaryLength + strlen(modelDisposition) + newlineLength + newlineLength + strlen(model) + boundaryLength + strlen(twohyphens) + newlineLength;
+
 
   client.print("POST ");
   client.print(endpoint);
@@ -117,15 +144,28 @@ void sendAudio(char* prompt) {
   client.println();
 
   int start = millis();
-  
+
+  audioFile.seek(0);
+  delay(500);
+
+  // int test = 0;
   uint8_t buffer[1600];
   while (audioFile.available()) {
     size_t readBytes = audioFile.readBytes((char*)buffer, 1600);
     client.write(buffer, readBytes);
+    // if (test == 0 ){
+    //   for (int i = 0; i< readBytes; i++)
+    //     Serial.print(buffer[i]);
+    //     Serial.print(" ");
+    // }
+    // test++;
+    client.flush();
+
   }
   client.flush();
+  delay(500);
   audioFile.close();
-  // Serial.printf("raw sending audio bytes: %d s \n", (millis() - start)/1000);
+  Serial.printf("raw sending audio bytes: %d s \n", (millis() - start)/1000);
 
   client.println();
   client.print(twohyphens);
@@ -151,6 +191,8 @@ void sendAudio(char* prompt) {
     char c = (char)client.read();
     strncat(response, &c, 1);
   }
+  Serial.print("Response str: ");
+  Serial.println(response);
   client.stop();
 
   StaticJsonDocument<16> doc;
@@ -167,7 +209,7 @@ void sendAudio(char* prompt) {
 }
 
 void sendPrompt(char* prompt, char* answer) {
-  // Serial.println("Sending prompt");
+  Serial.println("Sending prompt");
     
   //information of the API to connect to
   int port = 443;
@@ -175,11 +217,18 @@ void sendPrompt(char* prompt, char* answer) {
   char* endpoint = "/v1/chat/completions";
 
   //Allows for TLS handshake to occur
-  WiFiClientSecure client;
   client.setCACert(cert);
+  // client.setInsecure();
   client.connect(host, port);
 
-  char* payload1 = "{\"model\": \"gpt-3.5-turbo\", \"max_tokens\": 100, \"messages\": [{\"role\": \"system\", \"content\": \"You are an AI powered Magic 8 Ball, your answers should resemble a typical 8 Ball's response but can be adapted to fit the needs of the prompt.\"}, {\"role\": \"user\", \"content\": \"";
+  if (!client.connected()){
+    Serial.println("Issues with establishing connection to API");
+    char* empty = "";
+    strncpy(answer, empty, 1);
+    return;
+  }
+
+  char* payload1 = "{\"model\": \"gpt-3.5-turbo\", \"max_tokens\": 100, \"messages\": [{\"role\": \"system\", \"content\": \"You are an AI powered Magic 8 Ball, your answers should resemble a typical 8 Ball's response but can be adapted to fit the needs of the prompt. It should be really ridiculous, when acceptable. Make it around 50 characters\"}, {\"role\": \"user\", \"content\": \"";
   char* payload2 = "\"}]}";
   int payloadLength = strlen(payload1) + strlen(payload2) + strlen(prompt);
 
@@ -205,40 +254,105 @@ void sendPrompt(char* prompt, char* answer) {
   while (client.connected()) {
     String line = client.readStringUntil('\n');
     if (line == "\r") {
-      // Serial.println("headers received");
+      Serial.println("headers received");
       break;
     }
   }
-  char response[800];
+  char response[1024];
   response[0] = '\0';
+  // client.read();
+  // client.read();
+  // client.read();
+  // client.read();
+
+  int temp = 0;
   while (client.available()) {
     char c = (char)client.read();
-    strncat(response, &c, 1);
+    if (temp > 4)
+      strncat(response, &c, 1);
+    else
+      temp++;
   }
   client.stop();
 
-  StaticJsonDocument<512> doc;
+
+  //WEIRD FIX
+
+  Serial.println("Response str: ");
+  Serial.println(response);
+
+  StaticJsonDocument<2048> doc;
   DeserializationError error = deserializeJson(doc, response);
+
+
   if (error) {
-    // Serial.println("deserialize error");
-    strncpy(answer, error.c_str(), strlen(error.c_str()) + 1);
+    Serial.println("deserialize error");
+    strncpy(answer, error.c_str(), strlen(error.c_str()));
   }
+  else{
 
-  JsonObject choices = doc["choices"][0];
-  const char* message = choices["message"]["content"];
+    JsonObject choices = doc["choices"][0];
+    const char* message = choices["message"]["content"];
 
-  strncpy(answer, message, strlen(message) + 1);
+    strncpy(answer, message, strlen(message) + 1);
+  }
 }
 
 
+int ReadAxis(int axisPin){
+	long reading = 0;
+	for (int i = 0; i < sampleSize; i++)
+	{
+	reading += analogRead(axisPin);
+
+	}
+	return reading/sampleSize;
+
+}
+
+
+int readAcc(){
+
+  //Read raw values
+	int xRaw = ReadAxis(xInput);
+	int yRaw = ReadAxis(yInput);
+	int zRaw = ReadAxis(zInput);
+
+
+	 // Convert raw values to 'milli-Gs"
+  long xScaled = map(xRaw, xRawMin, xRawMax, -1000, 1000);
+  long yScaled = map(yRaw, yRawMin, yRawMax, -1000, 1000);
+  long zScaled = map(zRaw, zRawMin, zRawMax, -1000, 1000);
+  return sqrt(xScaled * xScaled + yScaled * yScaled +  zScaled * zScaled);
+
+
+
+}
+
 void loop() {
-
   clearWrite("Shake to ask");
-  if (shakenFlag){
-    clearWrite("Recording audio");
 
-    
-    recordClip();
+  int acc = readAcc();
+  Serial.print("Acc:");
+  Serial.println(acc); 
+
+  if (acc > 850){
+    shakenFlag = 1;
+  }
+
+
+  if (shakenFlag){
+    Serial.println("Triggered");
+    // digitalWrite(15, HIGH);
+    // delay(1000);
+    // digitalWrite(15, LOW);
+    clearWrite("Triggered");
+
+    if (!recordClip()){
+      clearWrite("Failed to record audio");
+      goto fail;
+    }
+
 
     char prompt[200];
     char answer[400];
@@ -246,30 +360,34 @@ void loop() {
     clearWrite("Transcribing");
 
 
-    int start = millis();
     sendAudio(prompt);
-    // Serial.println(prompt);
-    if (strcmp(prompt, "InvalidInput") == 0 || strlen(prompt) == 0 || !checkChars(prompt)) {
+    Serial.println(prompt);
+    if (strcmp(prompt, "IncompleteInput") == 0 || strcmp(prompt, "InvalidInput") == 0 || strlen(prompt) == 0 || !checkChars(prompt)) {
       clearWrite("transcribe error");
+      delay(5000);
       
     }
     // Serial.printf("Time taken for audio %d s \n", (millis() - start) / 1000);
     else{
       clearWrite("Generating");
 
-
-      start = millis();
       sendPrompt(prompt, answer);
+      Serial.println("wroked");
+      Serial.println(answer);
 
-      marquee(answer);
+
+      marquee(answer,0);
     }
     
-    Serial.println(answer);
     // Serial.printf("Time taken for response %d s \n", (millis() - start) / 1000);
     
+    fail:
     shakenFlag = 0;
 
     
   }
   delay(500);
 }
+
+
+
